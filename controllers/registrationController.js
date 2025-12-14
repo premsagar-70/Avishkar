@@ -1,8 +1,9 @@
 const { db } = require('../config/firebase');
+const mailSender = require('../services/mailSender');
 
 const registerForEvent = async (req, res) => {
     try {
-        const { userId, eventId, mobile, email, name } = req.body;
+        const { userId, eventId, mobile, email, name, paymentScreenshotUrl, status } = req.body;
 
         if (!userId || !eventId || !mobile) {
             return res.status(400).json({ error: 'Missing required fields' });
@@ -26,7 +27,8 @@ const registerForEvent = async (req, res) => {
             mobile,
             email, // Storing email for easy access by admins
             name,  // Storing name for easy access
-            status: 'registered', // registered, attended, etc.
+            paymentScreenshotUrl: paymentScreenshotUrl || '',
+            status: status || 'pending', // pending, approved, rejected
             timestamp: new Date()
         });
 
@@ -118,4 +120,56 @@ const getRegistrationById = async (req, res) => {
     }
 };
 
-module.exports = { registerForEvent, getEventParticipants, getUserRegistrations, getRegistrationById };
+const updateRegistrationStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!status) {
+            return res.status(400).json({ error: 'Status is required' });
+        }
+
+        const regDoc = await db.collection('registrations').doc(id).get();
+        if (!regDoc.exists) {
+            return res.status(404).json({ error: 'Registration not found' });
+        }
+        const registration = regDoc.data();
+
+        await db.collection('registrations').doc(id).update({ status });
+
+        // Send Email Notification
+        if (registration.email) {
+            let subject = '';
+            let body = '';
+
+            if (status === 'approved') {
+                subject = 'Registration Approved - Aviskahr';
+                body = `<p>Hello ${registration.name || 'Participant'},</p>
+                        <p>Your registration for the event has been <strong>APPROVED</strong>.</p>
+                        <p>We look forward to seeing you there!</p>`;
+            } else if (status === 'rejected') {
+                subject = 'Registration Update - Aviskahr';
+                body = `<p>Hello ${registration.name || 'Participant'},</p>
+                        <p>Your registration for the event has been <strong>REJECTED</strong>.</p>
+                        <p>Please contact the organizer for more details.</p>`;
+            }
+
+            if (subject && body) {
+                await mailSender(registration.email, subject, body);
+            }
+        }
+
+        res.status(200).json({ message: 'Registration status updated' });
+    } catch (error) {
+        console.error("Update Registration Status Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+module.exports = {
+    registerForEvent,
+    getEventParticipants,
+    getUserRegistrations,
+    getRegistrationById,
+    updateRegistrationStatus
+};

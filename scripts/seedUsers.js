@@ -8,10 +8,10 @@ const users = [
         role: 'admin'
     },
     {
-        email: 'conductor@aviskhar.com',
+        email: 'organizer@aviskhar.com',
         password: 'password123',
-        displayName: 'Event Conductor',
-        role: 'conductor'
+        displayName: 'Event Organizer',
+        role: 'organizer'
     },
     {
         email: 'student@aviskhar.com',

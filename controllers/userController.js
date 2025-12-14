@@ -47,7 +47,7 @@ const updateUserRole = async (req, res) => {
         // Update role in Firestore
         await db.collection('users').doc(uid).update({
             role,
-            conductorRequest: false // Clear the request flag
+            organizerRequest: false // Clear the request flag
         });
 
         res.status(200).json({ message: 'User role updated successfully' });

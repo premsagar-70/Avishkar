@@ -3,24 +3,24 @@ const { deleteFromGitHub } = require('../services/githubService');
 
 const createEvent = async (req, res) => {
     try {
-        const { title, date, description, venue, imageUrl, createdBy, role, price, category, assignedTo } = req.body;
+        const { title, date, description, venue, imageUrl, createdBy, role, price, category, assignedTo, paymentQrCodeUrl, upiId } = req.body;
 
-        let conductorName = '';
-        let conductorEmail = '';
+        let organizerName = '';
+        let organizerEmail = '';
 
         if (assignedTo) {
             const userDoc = await db.collection('users').doc(assignedTo).get();
             if (userDoc.exists) {
                 const userData = userDoc.data();
-                conductorName = userData.name || '';
-                conductorEmail = userData.email || '';
+                organizerName = userData.name || '';
+                organizerEmail = userData.email || '';
             }
         } else if (createdBy && createdBy !== 'admin') {
             const userDoc = await db.collection('users').doc(createdBy).get();
             if (userDoc.exists) {
                 const userData = userDoc.data();
-                conductorName = userData.name || '';
-                conductorEmail = userData.email || '';
+                organizerName = userData.name || '';
+                organizerEmail = userData.email || '';
             }
         }
 
@@ -34,8 +34,10 @@ const createEvent = async (req, res) => {
             category,
             createdBy: createdBy || 'admin',
             assignedTo: assignedTo || null,
-            conductorName,
-            conductorEmail,
+            organizerName,
+            organizerEmail,
+            paymentQrCodeUrl: paymentQrCodeUrl || '',
+            upiId: upiId || '',
             status: role === 'admin' ? 'approved' : 'pending',
             createdAt: new Date().toISOString()
         };
@@ -48,16 +50,16 @@ const createEvent = async (req, res) => {
 
 const getEvents = async (req, res) => {
     try {
-        const { role, conductorId } = req.query;
+        const { role, organizerId } = req.query;
         let query = db.collection('events');
 
         if (role !== 'admin') {
-            if (conductorId) {
+            if (organizerId) {
                 const snapshot = await query.get();
                 let events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
                 events = events.filter(event =>
-                    event.assignedTo === conductorId || event.createdBy === conductorId
+                    event.assignedTo === organizerId || event.createdBy === organizerId
                 );
                 return res.status(200).json(events);
             } else {
@@ -87,27 +89,22 @@ const getEventById = async (req, res) => {
 
 const updateEvent = async (req, res) => {
     try {
-        console.log("Update Event Request Body:", req.body);
         const updates = { ...req.body };
 
         if (updates.assignedTo !== undefined) {
-            console.log("Updating assignedTo:", updates.assignedTo);
             if (updates.assignedTo) {
                 const userDoc = await db.collection('users').doc(updates.assignedTo).get();
                 if (userDoc.exists) {
                     const userData = userDoc.data();
-                    updates.conductorName = userData.name || '';
-                    updates.conductorEmail = userData.email || '';
-                    console.log("Resolved Conductor:", updates.conductorName, updates.conductorEmail);
+                    updates.organizerName = userData.name || '';
+                    updates.organizerEmail = userData.email || '';
                 } else {
-                    console.log("User document not found for ID:", updates.assignedTo);
-                    updates.conductorName = '';
-                    updates.conductorEmail = '';
+                    updates.organizerName = '';
+                    updates.organizerEmail = '';
                 }
             } else {
-                console.log("Clearing assignment");
-                updates.conductorName = '';
-                updates.conductorEmail = '';
+                updates.organizerName = '';
+                updates.organizerEmail = '';
                 updates.assignedTo = null;
             }
         }

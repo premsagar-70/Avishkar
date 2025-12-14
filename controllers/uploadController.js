@@ -4,15 +4,13 @@ const uploadImage = async (req, res) => {
     try {
         const { image, folder } = req.body;
 
-        console.log(`[Upload] Request received. Folder: ${folder}, Image length: ${image ? image.length : 'N/A'}`);
-
         if (!image) {
             console.error('[Upload] No image provided');
             return res.status(400).json({ error: 'No image provided' });
         }
 
         const imageUrl = await uploadToGitHub(image, folder || 'events');
-        console.log(`[Upload] Success: ${imageUrl}`);
+        // console.log(`[Upload] Success: ${imageUrl}`);
 
         res.status(200).json({ url: imageUrl });
     } catch (error) {
