@@ -4,6 +4,26 @@ const { deleteFromGitHub } = require('../services/githubService');
 const createEvent = async (req, res) => {
     try {
         const { title, date, description, venue, imageUrl, createdBy, role, price, category, assignedTo } = req.body;
+
+        let conductorName = '';
+        let conductorEmail = '';
+
+        if (assignedTo) {
+            const userDoc = await db.collection('users').doc(assignedTo).get();
+            if (userDoc.exists) {
+                const userData = userDoc.data();
+                conductorName = userData.name || '';
+                conductorEmail = userData.email || '';
+            }
+        } else if (createdBy && createdBy !== 'admin') {
+            const userDoc = await db.collection('users').doc(createdBy).get();
+            if (userDoc.exists) {
+                const userData = userDoc.data();
+                conductorName = userData.name || '';
+                conductorEmail = userData.email || '';
+            }
+        }
+
         const newEvent = {
             title,
             date,
@@ -13,7 +33,9 @@ const createEvent = async (req, res) => {
             price,
             category,
             createdBy: createdBy || 'admin',
-            assignedTo: assignedTo || null, // ID of the assigned conductor
+            assignedTo: assignedTo || null,
+            conductorName,
+            conductorEmail,
             status: role === 'admin' ? 'approved' : 'pending',
             createdAt: new Date().toISOString()
         };
@@ -30,16 +52,7 @@ const getEvents = async (req, res) => {
         let query = db.collection('events');
 
         if (role !== 'admin') {
-            // If conductorId is provided, filter by assignedTo OR createdBy
             if (conductorId) {
-                // Firestore doesn't support logical OR directly in one query easily for different fields without composite indexes or multiple queries.
-                // However, we can fetch all and filter in memory if dataset is small, OR use two queries.
-                // For simplicity and performance with small datasets, let's fetch all approved (or all if conductor) and filter.
-                // But wait, conductors should see PENDING events they created too.
-
-                // Let's try a simpler approach:
-                // If conductorId is present, we want events where (assignedTo == conductorId) OR (createdBy == conductorId)
-                // Since we can't do OR easily, let's fetch all and filter in JS.
                 const snapshot = await query.get();
                 let events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
@@ -48,7 +61,6 @@ const getEvents = async (req, res) => {
                 );
                 return res.status(200).json(events);
             } else {
-                // Public view: only approved
                 query = query.where('status', '==', 'approved');
             }
         }
@@ -75,9 +87,35 @@ const getEventById = async (req, res) => {
 
 const updateEvent = async (req, res) => {
     try {
-        await db.collection('events').doc(req.params.id).update(req.body);
-        res.status(200).json({ id: req.params.id, ...req.body });
+        console.log("Update Event Request Body:", req.body);
+        const updates = { ...req.body };
+
+        if (updates.assignedTo !== undefined) {
+            console.log("Updating assignedTo:", updates.assignedTo);
+            if (updates.assignedTo) {
+                const userDoc = await db.collection('users').doc(updates.assignedTo).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    updates.conductorName = userData.name || '';
+                    updates.conductorEmail = userData.email || '';
+                    console.log("Resolved Conductor:", updates.conductorName, updates.conductorEmail);
+                } else {
+                    console.log("User document not found for ID:", updates.assignedTo);
+                    updates.conductorName = '';
+                    updates.conductorEmail = '';
+                }
+            } else {
+                console.log("Clearing assignment");
+                updates.conductorName = '';
+                updates.conductorEmail = '';
+                updates.assignedTo = null;
+            }
+        }
+
+        await db.collection('events').doc(req.params.id).update(updates);
+        res.status(200).json({ id: req.params.id, ...updates });
     } catch (error) {
+        console.error("Update Event Error:", error);
         res.status(500).json({ error: error.message });
     }
 };
