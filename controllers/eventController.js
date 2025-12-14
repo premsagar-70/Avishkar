@@ -3,7 +3,7 @@ const { deleteFromGitHub } = require('../services/githubService');
 
 const createEvent = async (req, res) => {
     try {
-        const { title, date, description, venue, imageUrl, createdBy, role, price, category } = req.body;
+        const { title, date, description, venue, imageUrl, createdBy, role, price, category, assignedTo } = req.body;
         const newEvent = {
             title,
             date,
@@ -13,6 +13,7 @@ const createEvent = async (req, res) => {
             price,
             category,
             createdBy: createdBy || 'admin',
+            assignedTo: assignedTo || null, // ID of the assigned conductor
             status: role === 'admin' ? 'approved' : 'pending',
             createdAt: new Date().toISOString()
         };
@@ -25,11 +26,31 @@ const createEvent = async (req, res) => {
 
 const getEvents = async (req, res) => {
     try {
-        const { role } = req.query;
+        const { role, conductorId } = req.query;
         let query = db.collection('events');
 
         if (role !== 'admin') {
-            query = query.where('status', '==', 'approved');
+            // If conductorId is provided, filter by assignedTo OR createdBy
+            if (conductorId) {
+                // Firestore doesn't support logical OR directly in one query easily for different fields without composite indexes or multiple queries.
+                // However, we can fetch all and filter in memory if dataset is small, OR use two queries.
+                // For simplicity and performance with small datasets, let's fetch all approved (or all if conductor) and filter.
+                // But wait, conductors should see PENDING events they created too.
+
+                // Let's try a simpler approach:
+                // If conductorId is present, we want events where (assignedTo == conductorId) OR (createdBy == conductorId)
+                // Since we can't do OR easily, let's fetch all and filter in JS.
+                const snapshot = await query.get();
+                let events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                events = events.filter(event =>
+                    event.assignedTo === conductorId || event.createdBy === conductorId
+                );
+                return res.status(200).json(events);
+            } else {
+                // Public view: only approved
+                query = query.where('status', '==', 'approved');
+            }
         }
 
         const snapshot = await query.get();
