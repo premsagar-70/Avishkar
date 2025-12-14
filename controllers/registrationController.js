@@ -20,6 +20,24 @@ const registerForEvent = async (req, res) => {
             return res.status(400).json({ message: 'Already registered for this event' });
         }
 
+        // Check for slots availability
+        const eventDoc = await db.collection('events').doc(eventId).get();
+        if (eventDoc.exists) {
+            const eventData = eventDoc.data();
+            if (eventData.slots) {
+                const currentRegistrations = await registrationsRef
+                    .where('eventId', '==', eventId)
+                    .get();
+
+                // Filter out rejected registrations
+                const activeRegistrations = currentRegistrations.docs.filter(doc => doc.data().status !== 'rejected').length;
+
+                if (activeRegistrations >= eventData.slots) {
+                    return res.status(400).json({ message: 'Registration Full. Please contact the organizer for more seats.' });
+                }
+            }
+        }
+
         // Upload payment screenshot if provided and is base64
         let finalPaymentScreenshotUrl = paymentScreenshotUrl || '';
         if (paymentScreenshotUrl && paymentScreenshotUrl.startsWith('data:image')) {

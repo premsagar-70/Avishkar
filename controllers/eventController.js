@@ -3,7 +3,7 @@ const { deleteFromGitHub } = require('../services/githubService');
 
 const createEvent = async (req, res) => {
     try {
-        const { title, date, description, venue, imageUrl, createdBy, role, price, category, assignedTo, paymentQrCodeUrl, upiId } = req.body;
+        const { title, date, description, venue, imageUrl, createdBy, role, price, category, assignedTo, paymentQrCodeUrl, upiId, slots } = req.body;
 
         let organizerName = '';
         let organizerEmail = '';
@@ -15,7 +15,7 @@ const createEvent = async (req, res) => {
                 organizerName = userData.name || '';
                 organizerEmail = userData.email || '';
             }
-        } else if (createdBy && createdBy !== 'admin') {
+        } else if (createdBy && createdBy !== 'admin' && role !== 'admin') {
             const userDoc = await db.collection('users').doc(createdBy).get();
             if (userDoc.exists) {
                 const userData = userDoc.data();
@@ -38,6 +38,7 @@ const createEvent = async (req, res) => {
             organizerEmail,
             paymentQrCodeUrl: paymentQrCodeUrl || '',
             upiId: upiId || '',
+            slots: slots ? parseInt(slots) : null,
             status: role === 'admin' ? 'approved' : 'pending',
             createdAt: new Date().toISOString()
         };
@@ -81,7 +82,14 @@ const getEventById = async (req, res) => {
         if (!doc.exists) {
             return res.status(404).json({ error: 'Event not found' });
         }
-        res.status(200).json({ id: doc.id, ...doc.data() });
+        const registrationsSnapshot = await db.collection('registrations')
+            .where('eventId', '==', req.params.id)
+            .get();
+
+        // Count registrations that are not rejected
+        const registeredCount = registrationsSnapshot.docs.filter(doc => doc.data().status !== 'rejected').length;
+
+        res.status(200).json({ id: doc.id, ...doc.data(), registeredCount });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -107,6 +115,10 @@ const updateEvent = async (req, res) => {
                 updates.organizerEmail = '';
                 updates.assignedTo = null;
             }
+        }
+
+        if (updates.slots) {
+            updates.slots = parseInt(updates.slots);
         }
 
         await db.collection('events').doc(req.params.id).update(updates);
