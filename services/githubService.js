@@ -114,20 +114,7 @@ const deleteFromGitHub = async (imageUrl) => {
             }
         });
 
-        await axios.delete(url, {
-            headers: {
-                Authorization: `token ${process.env.GITHUB_TOKEN}`,
-                Accept: 'application/vnd.github.v3+json',
-            },
-            data: {
-                message: `Delete image ${path}`,
-                sha: sha,
-                branch: process.env.GITHUB_BRANCH,
-            },
-        });
         // console.log(`[GitHub] Deleted image: ${path}`);
-    } catch (error) {
-
     } catch (error) {
         console.error('GitHub Delete Error:', error.message);
         // Don't throw, just log. Deletion failure shouldn't block event deletion.
