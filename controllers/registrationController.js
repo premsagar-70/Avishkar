@@ -171,7 +171,13 @@ const updateRegistrationStatus = async (req, res) => {
             if (subject && body) {
                 console.log(`[Email] Attempting to send email to ${registration.email} with subject: ${subject}`);
                 mailSender(registration.email, subject, body)
-                    .then(info => console.log(`[Email] Sent successfully:`, info))
+                    .then(info => {
+                        if (info) {
+                            console.log(`[Email] Sent successfully. Message ID: ${info.messageId}`);
+                        } else {
+                            console.error(`[Email] Failed to send email (check mailSender logs)`);
+                        }
+                    })
                     .catch(err => console.error("[Email] Sending failed:", err));
             }
         }
