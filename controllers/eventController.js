@@ -3,13 +3,15 @@ const { deleteFromGitHub } = require('../services/githubService');
 
 const createEvent = async (req, res) => {
     try {
-        const { title, date, description, venue, imageUrl, createdBy, role } = req.body;
+        const { title, date, description, venue, imageUrl, createdBy, role, price, category } = req.body;
         const newEvent = {
             title,
             date,
             description,
             venue,
             imageUrl,
+            price,
+            category,
             createdBy: createdBy || 'admin',
             status: role === 'admin' ? 'approved' : 'pending',
             createdAt: new Date().toISOString()
@@ -66,11 +68,23 @@ const deleteEvent = async (req, res) => {
 
         if (doc.exists) {
             const eventData = doc.data();
+
+            // 1. Delete Image from GitHub
             if (eventData.imageUrl) {
                 await deleteFromGitHub(eventData.imageUrl);
             }
+
+            // 2. Delete all registrations for this event
+            const registrationsSnapshot = await db.collection('registrations').where('eventId', '==', req.params.id).get();
+            const batch = db.batch();
+            registrationsSnapshot.docs.forEach((doc) => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+
+            // 3. Delete the event itself
             await docRef.delete();
-            res.status(200).json({ message: 'Event deleted successfully' });
+            res.status(200).json({ message: 'Event and associated registrations deleted successfully' });
         } else {
             res.status(404).json({ error: 'Event not found' });
         }
