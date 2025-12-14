@@ -3,7 +3,7 @@ const { deleteFromGitHub } = require('../services/githubService');
 
 const createEvent = async (req, res) => {
     try {
-        const { title, date, description, venue, imageUrl, createdBy } = req.body;
+        const { title, date, description, venue, imageUrl, createdBy, role } = req.body;
         const newEvent = {
             title,
             date,
@@ -11,7 +11,7 @@ const createEvent = async (req, res) => {
             venue,
             imageUrl,
             createdBy: createdBy || 'admin',
-            status: 'pending', // Default status
+            status: role === 'admin' ? 'approved' : 'pending',
             createdAt: new Date().toISOString()
         };
         const docRef = await db.collection('events').add(newEvent);
@@ -26,10 +26,9 @@ const getEvents = async (req, res) => {
         const { role } = req.query;
         let query = db.collection('events');
 
-        // If not admin, maybe filter? For now, return all or filter by status
-        // if (role !== 'admin') {
-        //    query = query.where('status', '==', 'approved');
-        // }
+        if (role !== 'admin') {
+            query = query.where('status', '==', 'approved');
+        }
 
         const snapshot = await query.get();
         const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
