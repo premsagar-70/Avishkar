@@ -1,5 +1,6 @@
 const { db } = require('../config/firebase');
 const mailSender = require('../services/mailSender');
+const { uploadToGitHub } = require('../services/githubService');
 
 const registerForEvent = async (req, res) => {
     try {
@@ -20,6 +21,19 @@ const registerForEvent = async (req, res) => {
             return res.status(400).json({ message: 'Already registered for this event' });
         }
 
+        // Upload payment screenshot if provided and is base64
+        let finalPaymentScreenshotUrl = paymentScreenshotUrl || '';
+        if (paymentScreenshotUrl && paymentScreenshotUrl.startsWith('data:image')) {
+            try {
+                finalPaymentScreenshotUrl = await uploadToGitHub(paymentScreenshotUrl, 'payments');
+            } catch (uploadError) {
+                console.error("Failed to upload payment screenshot:", uploadError);
+                // Continue with base64 or empty? Let's continue but log it.
+                // Or maybe fail? For now, let's keep the base64 if upload fails so we don't lose data, 
+                // but ideally we should handle this better.
+            }
+        }
+
         // Create registration
         await registrationsRef.add({
             userId,
@@ -27,7 +41,7 @@ const registerForEvent = async (req, res) => {
             mobile,
             email, // Storing email for easy access by admins
             name,  // Storing name for easy access
-            paymentScreenshotUrl: paymentScreenshotUrl || '',
+            paymentScreenshotUrl: finalPaymentScreenshotUrl,
             status: status || 'pending', // pending, approved, rejected
             timestamp: new Date()
         });
@@ -155,7 +169,10 @@ const updateRegistrationStatus = async (req, res) => {
             }
 
             if (subject && body) {
-                await mailSender(registration.email, subject, body);
+                console.log(`[Email] Attempting to send email to ${registration.email} with subject: ${subject}`);
+                mailSender(registration.email, subject, body)
+                    .then(info => console.log(`[Email] Sent successfully:`, info))
+                    .catch(err => console.error("[Email] Sending failed:", err));
             }
         }
 
