@@ -1,5 +1,5 @@
 const { db } = require('../config/firebase');
-const mailSender = require('../services/mailSender');
+const { mailSender } = require('../services/mailSender');
 const { uploadToGitHub } = require('../services/githubService');
 
 const registerForEvent = async (req, res) => {

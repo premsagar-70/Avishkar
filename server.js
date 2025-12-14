@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const scheduleReminders = require('./cron/reminderJob');
+const { verifyConnection } = require('./services/mailSender');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -29,4 +30,5 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     scheduleReminders();
+    verifyConnection();
 });

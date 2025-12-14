@@ -30,4 +30,25 @@ const mailSender = async (email, title, body) => {
     }
 };
 
-module.exports = mailSender;
+const verifyConnection = async () => {
+    try {
+        let transporter = nodemailer.createTransport({
+            service: 'gmail',
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true,
+            auth: {
+                user: process.env.MAIL_USER,
+                pass: process.env.MAIL_PASS,
+            },
+        });
+        await transporter.verify();
+        console.log('[MailSender] Server is ready to take our messages');
+        return true;
+    } catch (error) {
+        console.error('[MailSender] Connection verification failed:', error.message);
+        return false;
+    }
+};
+
+module.exports = { mailSender, verifyConnection };
