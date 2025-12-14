@@ -3,19 +3,16 @@ const nodemailer = require('nodemailer');
 const mailSender = async (email, title, body) => {
     try {
         console.log(`[MailSender] Preparing to send email to: ${email}`);
+        // SendGrid Configuration
         let transporter = nodemailer.createTransport({
-            host: 'smtp.gmail.com',
-            port: 465,
-            secure: true, // true for 465, false for other ports
+            host: 'smtp.sendgrid.net',
+            port: 587,
             auth: {
-                user: process.env.MAIL_USER,
-                pass: process.env.MAIL_PASS,
+                user: 'apikey', // SendGrid requires this exact username
+                pass: process.env.SENDGRID_API_KEY || process.env.MAIL_PASS, // Use SENDGRID_API_KEY if available, else fallback
             },
-            connectionTimeout: 10000, // 10 seconds
-            greetingTimeout: 10000,
-            socketTimeout: 10000,
-            debug: true, // show debug output
-            logger: true // log information in console
+            debug: true,
+            logger: true
         });
 
         let info = await transporter.sendMail({
@@ -35,17 +32,15 @@ const mailSender = async (email, title, body) => {
 const verifyConnection = async () => {
     try {
         let transporter = nodemailer.createTransport({
-            host: 'smtp.gmail.com',
-            port: 465,
-            secure: true,
+            host: 'smtp.sendgrid.net',
+            port: 587,
             auth: {
-                user: process.env.MAIL_USER,
-                pass: process.env.MAIL_PASS,
+                user: 'apikey',
+                pass: process.env.SENDGRID_API_KEY || process.env.MAIL_PASS,
             },
-            connectionTimeout: 10000,
         });
         await transporter.verify();
-        console.log('[MailSender] Server is ready to take our messages');
+        console.log('[MailSender] Server is ready to take our messages (SendGrid)');
         return true;
     } catch (error) {
         console.error('[MailSender] Connection verification failed:', error.message);
