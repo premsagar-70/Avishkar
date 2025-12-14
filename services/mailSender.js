@@ -4,7 +4,6 @@ const mailSender = async (email, title, body) => {
     try {
         console.log(`[MailSender] Preparing to send email to: ${email}`);
         let transporter = nodemailer.createTransport({
-            service: 'gmail',
             host: 'smtp.gmail.com',
             port: 465,
             secure: true, // true for 465, false for other ports
@@ -12,6 +11,9 @@ const mailSender = async (email, title, body) => {
                 user: process.env.MAIL_USER,
                 pass: process.env.MAIL_PASS,
             },
+            connectionTimeout: 10000, // 10 seconds
+            greetingTimeout: 10000,
+            socketTimeout: 10000,
             debug: true, // show debug output
             logger: true // log information in console
         });
@@ -33,7 +35,6 @@ const mailSender = async (email, title, body) => {
 const verifyConnection = async () => {
     try {
         let transporter = nodemailer.createTransport({
-            service: 'gmail',
             host: 'smtp.gmail.com',
             port: 465,
             secure: true,
@@ -41,6 +42,7 @@ const verifyConnection = async () => {
                 user: process.env.MAIL_USER,
                 pass: process.env.MAIL_PASS,
             },
+            connectionTimeout: 10000,
         });
         await transporter.verify();
         console.log('[MailSender] Server is ready to take our messages');
