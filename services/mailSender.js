@@ -4,11 +4,16 @@ const mailSender = async (email, title, body) => {
     try {
         console.log(`[MailSender] Preparing to send email to: ${email}`);
         let transporter = nodemailer.createTransport({
-            host: process.env.MAIL_HOST,
+            service: 'gmail',
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true, // true for 465, false for other ports
             auth: {
                 user: process.env.MAIL_USER,
                 pass: process.env.MAIL_PASS,
             },
+            debug: true, // show debug output
+            logger: true // log information in console
         });
 
         let info = await transporter.sendMail({
