@@ -1,5 +1,4 @@
 const { db } = require('../config/firebase');
-const { mailSender } = require('../services/mailSender');
 const { uploadToGitHub } = require('../services/githubService');
 
 const registerForEvent = async (req, res) => {
@@ -168,18 +167,7 @@ const updateRegistrationStatus = async (req, res) => {
                         <p>Please contact the organizer for more details.</p>`;
             }
 
-            if (subject && body) {
-                console.log(`[Email] Attempting to send email to ${registration.email} with subject: ${subject}`);
-                mailSender(registration.email, subject, body)
-                    .then(info => {
-                        if (info) {
-                            console.log(`[Email] Sent successfully. Message ID: ${info.messageId}`);
-                        } else {
-                            console.error(`[Email] Failed to send email (check mailSender logs)`);
-                        }
-                    })
-                    .catch(err => console.error("[Email] Sending failed:", err));
-            }
+            // Email sending disabled by user request
         }
 
         res.status(200).json({ message: 'Registration status updated' });
