@@ -1,0 +1,60 @@
+const { auth, db } = require('../config/firebase');
+
+const getAllUsers = async (req, res) => {
+    try {
+        // Fetch users from Firebase Auth
+        const listUsersResult = await auth.listUsers(1000);
+        const users = listUsersResult.users.map(userRecord => ({
+            uid: userRecord.uid,
+            email: userRecord.email,
+            displayName: userRecord.displayName || 'N/A',
+            role: userRecord.customClaims?.role || 'participant', // Assuming role is in custom claims or we fetch from Firestore
+            metadata: userRecord.metadata
+        }));
+
+        // Optionally merge with Firestore data if roles are stored there
+        // For now, let's just return Auth data
+        // If roles are in Firestore, we should fetch them. 
+        // Let's try to fetch roles from Firestore 'users' collection
+
+        const usersSnapshot = await db.collection('users').get();
+        const firestoreUsers = {};
+        usersSnapshot.forEach(doc => {
+            firestoreUsers[doc.id] = doc.data();
+        });
+
+        const combinedUsers = users.map(user => ({
+            ...user,
+            ...firestoreUsers[user.uid], // Merge Firestore data (role, etc.)
+            role: firestoreUsers[user.uid]?.role || 'participant'
+        }));
+
+        res.status(200).json(combinedUsers);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ error: 'Failed to fetch users' });
+    }
+};
+
+const updateUserRole = async (req, res) => {
+    const { uid } = req.params;
+    const { role } = req.body;
+
+    try {
+        // Update custom claims in Firebase Auth
+        await auth.setCustomUserClaims(uid, { role });
+
+        // Update role in Firestore
+        await db.collection('users').doc(uid).update({
+            role,
+            conductorRequest: false // Clear the request flag
+        });
+
+        res.status(200).json({ message: 'User role updated successfully' });
+    } catch (error) {
+        console.error('Error updating user role:', error);
+        res.status(500).json({ error: 'Failed to update user role' });
+    }
+};
+
+module.exports = { getAllUsers, updateUserRole };
