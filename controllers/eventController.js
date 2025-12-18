@@ -7,6 +7,7 @@ const createEvent = async (req, res) => {
 
         let organizerName = '';
         let organizerEmail = '';
+        let organizerMobile = '';
 
         if (assignedTo) {
             const userDoc = await db.collection('users').doc(assignedTo).get();
@@ -14,6 +15,7 @@ const createEvent = async (req, res) => {
                 const userData = userDoc.data();
                 organizerName = userData.name || '';
                 organizerEmail = userData.email || '';
+                organizerMobile = userData.mobileNumber || '';
             }
         } else if (createdBy && createdBy !== 'admin' && role !== 'admin') {
             const userDoc = await db.collection('users').doc(createdBy).get();
@@ -21,6 +23,7 @@ const createEvent = async (req, res) => {
                 const userData = userDoc.data();
                 organizerName = userData.name || '';
                 organizerEmail = userData.email || '';
+                organizerMobile = userData.mobileNumber || '';
             }
         }
 
@@ -39,7 +42,7 @@ const createEvent = async (req, res) => {
             paymentQrCodeUrl: paymentQrCodeUrl || '',
             upiId: upiId || '',
             slots: slots ? parseInt(slots) : null,
-            organizerMobile: req.body.organizerMobile || '',
+            organizerMobile: organizerMobile,
             year: req.body.year || '2026',
             status: role === 'admin' ? 'approved' : 'pending',
             createdAt: new Date().toISOString()
@@ -108,13 +111,16 @@ const updateEvent = async (req, res) => {
                     const userData = userDoc.data();
                     updates.organizerName = userData.name || '';
                     updates.organizerEmail = userData.email || '';
+                    updates.organizerMobile = userData.mobileNumber || '';
                 } else {
                     updates.organizerName = '';
                     updates.organizerEmail = '';
+                    updates.organizerMobile = '';
                 }
             } else {
                 updates.organizerName = '';
                 updates.organizerEmail = '';
+                updates.organizerMobile = '';
                 updates.assignedTo = null;
             }
         }
