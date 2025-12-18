@@ -39,6 +39,8 @@ const createEvent = async (req, res) => {
             paymentQrCodeUrl: paymentQrCodeUrl || '',
             upiId: upiId || '',
             slots: slots ? parseInt(slots) : null,
+            organizerMobile: req.body.organizerMobile || '',
+            year: req.body.year || '2026',
             status: role === 'admin' ? 'approved' : 'pending',
             createdAt: new Date().toISOString()
         };
