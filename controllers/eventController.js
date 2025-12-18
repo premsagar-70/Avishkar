@@ -5,25 +5,25 @@ const createEvent = async (req, res) => {
     try {
         const { title, date, description, venue, imageUrl, createdBy, role, price, category, assignedTo, paymentQrCodeUrl, upiId, slots } = req.body;
 
-        let organizerName = '';
-        let organizerEmail = '';
-        let organizerMobile = '';
+        let organizerName = req.body.organizerName || '';
+        let organizerEmail = req.body.organizerEmail || '';
+        let organizerMobile = req.body.organizerMobile || '';
 
         if (assignedTo) {
             const userDoc = await db.collection('users').doc(assignedTo).get();
             if (userDoc.exists) {
                 const userData = userDoc.data();
-                organizerName = userData.name || '';
-                organizerEmail = userData.email || '';
-                organizerMobile = userData.mobileNumber || '';
+                if (userData.name) organizerName = userData.name;
+                if (userData.email) organizerEmail = userData.email;
+                if (userData.mobileNumber) organizerMobile = userData.mobileNumber;
             }
         } else if (createdBy && createdBy !== 'admin' && role !== 'admin') {
             const userDoc = await db.collection('users').doc(createdBy).get();
             if (userDoc.exists) {
                 const userData = userDoc.data();
-                organizerName = userData.name || '';
-                organizerEmail = userData.email || '';
-                organizerMobile = userData.mobileNumber || '';
+                if (userData.name) organizerName = userData.name;
+                if (userData.email) organizerEmail = userData.email;
+                if (userData.mobileNumber) organizerMobile = userData.mobileNumber;
             }
         }
 
@@ -109,9 +109,9 @@ const updateEvent = async (req, res) => {
                 const userDoc = await db.collection('users').doc(updates.assignedTo).get();
                 if (userDoc.exists) {
                     const userData = userDoc.data();
-                    updates.organizerName = userData.name || '';
-                    updates.organizerEmail = userData.email || '';
-                    updates.organizerMobile = userData.mobileNumber || '';
+                    updates.organizerName = userData.name || updates.organizerName || '';
+                    updates.organizerEmail = userData.email || updates.organizerEmail || '';
+                    updates.organizerMobile = userData.mobileNumber || updates.organizerMobile || '';
                 } else {
                     updates.organizerName = '';
                     updates.organizerEmail = '';
