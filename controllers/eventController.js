@@ -68,8 +68,10 @@ const getEvents = async (req, res) => {
                     event.assignedTo === organizerId || event.createdBy === organizerId
                 );
                 return res.status(200).json(events);
+                return res.status(200).json(events);
             } else {
-                query = query.where('status', '==', 'approved');
+                // Return both approved and completed events so Archives/PreviousYear pages work
+                query = query.where('status', 'in', ['approved', 'completed']);
             }
         }
 
@@ -178,11 +180,32 @@ const approveEvent = async (req, res) => {
     }
 };
 
+const archiveEvents = async (req, res) => {
+    try {
+        const { year } = req.body;
+        const snapshot = await db.collection('events').where('status', '==', 'approved').get();
+
+        const batch = db.batch();
+        snapshot.docs.forEach((doc) => {
+            batch.update(doc.ref, {
+                status: 'completed',
+                year: year || new Date().getFullYear().toString()
+            });
+        });
+
+        await batch.commit();
+        res.status(200).json({ message: `Archived ${snapshot.size} events to year ${year}` });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 module.exports = {
     createEvent,
     getEvents,
     getEventById,
     updateEvent,
     deleteEvent,
-    approveEvent
+    approveEvent,
+    archiveEvents
 };

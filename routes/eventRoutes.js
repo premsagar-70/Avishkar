@@ -6,7 +6,8 @@ const {
     getEventById,
     updateEvent,
     deleteEvent,
-    approveEvent
+    approveEvent,
+    archiveEvents
 } = require('../controllers/eventController');
 
 // TODO: Add auth middleware to protect write operations
@@ -15,6 +16,7 @@ router.get('/', getEvents);
 router.get('/:id', getEventById);
 router.put('/:id', updateEvent);
 router.put('/:id/approve', approveEvent);
+router.post('/archive', archiveEvents);
 router.delete('/:id', deleteEvent);
 
 module.exports = router;
