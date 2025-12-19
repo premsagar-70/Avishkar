@@ -140,7 +140,11 @@ const getRegistrationById = async (req, res) => {
         if (data.eventId) {
             const eventDoc = await db.collection('events').doc(data.eventId).get();
             if (eventDoc.exists) {
-                eventTitle = eventDoc.data().title;
+                const eventData = eventDoc.data();
+                eventTitle = eventData.title;
+                // Add fields for permission checking
+                data.eventAssignedTo = eventData.assignedTo;
+                data.eventCreatedBy = eventData.createdBy;
             }
         }
 
