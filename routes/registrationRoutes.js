@@ -6,6 +6,7 @@ router.post('/', registerForEvent);
 router.get('/event/:eventId', getEventParticipants);
 router.get('/user/:userId', getUserRegistrations);
 router.get('/:id', require('../controllers/registrationController').getRegistrationById);
+router.get('/check/:eventId/:userId', require('../controllers/registrationController').checkRegistrationStatus);
 router.put('/:id/status', require('../controllers/registrationController').updateRegistrationStatus);
 
 module.exports = router;

@@ -203,10 +203,40 @@ const updateRegistrationStatus = async (req, res) => {
     }
 };
 
+
+const checkRegistrationStatus = async (req, res) => {
+    try {
+        const { eventId, userId } = req.params;
+
+        if (!eventId || !userId) {
+            return res.status(400).json({ error: 'Missing parameters' });
+        }
+
+        const registrationsRef = db.collection('registrations');
+        const snapshot = await registrationsRef
+            .where('userId', '==', userId)
+            .where('eventId', '==', eventId)
+            .get();
+
+        if (snapshot.empty) {
+            return res.status(200).json(null);
+        }
+
+        // Return the first match (should only be one active usually)
+        const doc = snapshot.docs[0];
+        res.status(200).json({ id: doc.id, ...doc.data() });
+
+    } catch (error) {
+        console.error("Check Registration Status Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
 module.exports = {
     registerForEvent,
     getEventParticipants,
     getUserRegistrations,
     getRegistrationById,
-    updateRegistrationStatus
+    updateRegistrationStatus,
+    checkRegistrationStatus
 };
