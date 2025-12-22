@@ -23,7 +23,7 @@ app.use('/api/registrations', require('./routes/registrationRoutes'));
 app.use('/api/settings', require('./routes/settingsRoutes'));
 
 app.get('/', (req, res) => {
-    res.send('Aviskhar API is running');
+    res.send('Avishkar API is running');
 });
 
 app.listen(PORT, () => {

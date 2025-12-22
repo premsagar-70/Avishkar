@@ -2,19 +2,19 @@ const { auth, db } = require('../config/firebase');
 
 const users = [
     {
-        email: 'admin@aviskhar.com',
+        email: 'admin@avishkar.com',
         password: 'password123',
         displayName: 'Admin User',
         role: 'admin'
     },
     {
-        email: 'organizer@aviskhar.com',
+        email: 'organizer@avishkar.com',
         password: 'password123',
         displayName: 'Event Organizer',
         role: 'organizer'
     },
     {
-        email: 'student@aviskhar.com',
+        email: 'student@avishkar.com',
         password: 'password123',
         displayName: 'Student Participant',
         role: 'participant'
