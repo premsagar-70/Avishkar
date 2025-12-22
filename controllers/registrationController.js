@@ -61,6 +61,7 @@ const registerForEvent = async (req, res) => {
             college: college || '',
             rollNo: rollNo || '',
             department: department || '',
+            teamMembers: req.body.teamMembers || [],
             paymentScreenshotUrl: finalPaymentScreenshotUrl,
             status: status || 'pending', // pending, approved, rejected
             timestamp: new Date()

@@ -3,7 +3,7 @@ const { deleteFromGitHub } = require('../services/githubService');
 
 const createEvent = async (req, res) => {
     try {
-        const { title, date, description, venue, imageUrl, createdBy, role, price, category, assignedTo, paymentQrCodeUrl, upiId, slots } = req.body;
+        const { title, date, description, venue, imageUrl, createdBy, role, price, category, assignedTo, paymentQrCodeUrl, upiId, slots, maxTeamMembers } = req.body;
 
         let organizerName = req.body.organizerName || '';
         let organizerEmail = req.body.organizerEmail || '';
@@ -43,6 +43,7 @@ const createEvent = async (req, res) => {
             upiId: upiId || '',
             slots: slots ? parseInt(slots) : null,
             organizerMobile: organizerMobile,
+            maxTeamMembers: maxTeamMembers ? parseInt(maxTeamMembers) : 1,
             year: req.body.year || '2026',
             status: role === 'admin' ? 'approved' : 'pending',
             createdAt: new Date().toISOString()
