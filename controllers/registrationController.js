@@ -3,7 +3,7 @@ const { uploadToGitHub } = require('../services/githubService');
 
 const registerForEvent = async (req, res) => {
     try {
-        const { userId, eventId, mobile, email, name, paymentScreenshotUrl, status } = req.body;
+        const { userId, eventId, mobile, email, name, college, rollNo, department, paymentScreenshotUrl, status } = req.body;
 
         if (!userId || !eventId || !mobile) {
             return res.status(400).json({ error: 'Missing required fields' });
@@ -58,6 +58,9 @@ const registerForEvent = async (req, res) => {
             mobile,
             email, // Storing email for easy access by admins
             name,  // Storing name for easy access
+            college: college || '',
+            rollNo: rollNo || '',
+            department: department || '',
             paymentScreenshotUrl: finalPaymentScreenshotUrl,
             status: status || 'pending', // pending, approved, rejected
             timestamp: new Date()
