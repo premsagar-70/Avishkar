@@ -46,7 +46,10 @@ const createEvent = async (req, res) => {
             maxTeamMembers: maxTeamMembers ? parseInt(maxTeamMembers) : 1,
             year: req.body.year || '2026',
             status: role === 'admin' ? 'approved' : 'pending',
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            enableMultiDepartment: req.body.enableMultiDepartment || false,
+            departmentOrganizers: req.body.departmentOrganizers || {},
+            organizerIds: req.body.organizerIds || []
         };
         const docRef = await db.collection('events').add(newEvent);
         res.status(201).json({ id: docRef.id, ...newEvent });
@@ -66,9 +69,10 @@ const getEvents = async (req, res) => {
                 let events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
                 events = events.filter(event =>
-                    event.assignedTo === organizerId || event.createdBy === organizerId
+                    event.assignedTo === organizerId ||
+                    event.createdBy === organizerId ||
+                    (event.organizerIds && event.organizerIds.includes(organizerId))
                 );
-                return res.status(200).json(events);
                 return res.status(200).json(events);
             } else {
                 // Return both approved and completed events so Archives/PreviousYear pages work
@@ -106,6 +110,7 @@ const getEventById = async (req, res) => {
 const updateEvent = async (req, res) => {
     try {
         const updates = { ...req.body };
+        console.log(`Updating event ${req.params.id}`, Object.keys(updates));
 
         if (updates.assignedTo !== undefined) {
             if (updates.assignedTo) {

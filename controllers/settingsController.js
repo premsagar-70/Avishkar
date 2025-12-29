@@ -25,6 +25,8 @@ const getSettings = async (req, res) => {
 const updateSettings = async (req, res) => {
     try {
         const { registrationDeadline, departments } = req.body;
+        console.log("Updating Settings with:", { registrationDeadline, departmentsCount: departments?.length, departments });
+
         const updateData = {};
         if (registrationDeadline !== undefined) updateData.registrationDeadline = registrationDeadline;
         if (departments !== undefined) updateData.departments = departments;
