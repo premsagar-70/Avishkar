@@ -6,10 +6,16 @@ const getSettings = async (req, res) => {
         if (!doc.exists) {
             // Return defaults if not set
             return res.status(200).json({
-                registrationDeadline: new Date('2025-12-25').toISOString()
+                registrationDeadline: new Date('2025-12-25').toISOString(),
+                departments: ['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT', 'AI&DS', 'MBA', 'MCA', 'Others']
             });
         }
-        res.status(200).json(doc.data());
+        // Ensure departments exist even if doc exists
+        const data = doc.data();
+        if (!data.departments) {
+            data.departments = ['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT', 'AI&DS', 'MBA', 'MCA', 'Others'];
+        }
+        res.status(200).json(data);
     } catch (error) {
         console.error("Get Settings Error:", error);
         res.status(500).json({ error: error.message });
@@ -18,10 +24,12 @@ const getSettings = async (req, res) => {
 
 const updateSettings = async (req, res) => {
     try {
-        const { registrationDeadline } = req.body;
-        await db.collection('settings').doc('global').set({
-            registrationDeadline
-        }, { merge: true });
+        const { registrationDeadline, departments } = req.body;
+        const updateData = {};
+        if (registrationDeadline !== undefined) updateData.registrationDeadline = registrationDeadline;
+        if (departments !== undefined) updateData.departments = departments;
+
+        await db.collection('settings').doc('global').set(updateData, { merge: true });
         res.status(200).json({ message: 'Settings updated successfully' });
     } catch (error) {
         console.error("Update Settings Error:", error);
