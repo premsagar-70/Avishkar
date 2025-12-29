@@ -42,7 +42,7 @@ const registerForEvent = async (req, res) => {
         let finalPaymentScreenshotUrl = paymentScreenshotUrl || '';
         if (paymentScreenshotUrl && paymentScreenshotUrl.startsWith('data:image')) {
             try {
-                finalPaymentScreenshotUrl = await uploadToGitHub(paymentScreenshotUrl, 'payments');
+                finalPaymentScreenshotUrl = await uploadToGitHub(paymentScreenshotUrl, 'payment_proofs');
             } catch (uploadError) {
                 console.error("Failed to upload payment screenshot:", uploadError);
                 // Continue with base64 or empty? Let's continue but log it.
@@ -219,12 +219,15 @@ const checkRegistrationStatus = async (req, res) => {
             .get();
 
         if (snapshot.empty) {
-            return res.status(200).json(null);
+            return res.status(200).json({ registered: false });
         }
 
         // Return the first match (should only be one active usually)
         const doc = snapshot.docs[0];
-        res.status(200).json({ id: doc.id, ...doc.data() });
+        res.status(200).json({
+            registered: true,
+            registration: { id: doc.id, ...doc.data() }
+        });
 
     } catch (error) {
         console.error("Check Registration Status Error:", error);
