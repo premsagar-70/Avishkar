@@ -57,4 +57,30 @@ const updateUserRole = async (req, res) => {
     }
 };
 
-module.exports = { getAllUsers, updateUserRole };
+const getUserById = async (req, res) => {
+    try {
+        const { uid } = req.params;
+        const userDoc = await db.collection('users').doc(uid).get();
+
+        if (!userDoc.exists) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Return public profile info
+        const userData = userDoc.data();
+        const publicProfile = {
+            name: userData.name || '',
+            email: userData.email || '', // Maybe hide email if privacy concern? But user requested it.
+            mobileNumber: userData.mobileNumber || '',
+            upiId: userData.upiId || '',
+            role: userData.role || 'participant'
+        };
+
+        res.status(200).json(publicProfile);
+    } catch (error) {
+        console.error('Error fetching user by ID:', error);
+        res.status(500).json({ error: 'Failed to fetch user' });
+    }
+};
+
+module.exports = { getAllUsers, updateUserRole, getUserById };
