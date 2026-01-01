@@ -83,4 +83,24 @@ const getUserById = async (req, res) => {
     }
 };
 
-module.exports = { getAllUsers, updateUserRole, getUserById };
+const deleteUser = async (req, res) => {
+    const { uid } = req.params;
+
+    try {
+        // Delete from Firebase Auth
+        await auth.deleteUser(uid);
+
+        // Delete from Firestore
+        await db.collection('users').doc(uid).delete();
+
+        // Optionally delete related registrations? 
+        // For now, keeping it simple as per request.
+
+        res.status(200).json({ message: 'User deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        res.status(500).json({ error: 'Failed to delete user' });
+    }
+};
+
+module.exports = { getAllUsers, updateUserRole, getUserById, deleteUser };
