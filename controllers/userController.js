@@ -36,6 +36,9 @@ const getAllUsers = async (req, res) => {
     }
 };
 
+const { sendPushNotification } = require('../services/notificationService');
+const { admin } = require('../config/firebase');
+
 const updateUserRole = async (req, res) => {
     const { uid } = req.params;
     const { role } = req.body;
@@ -49,6 +52,29 @@ const updateUserRole = async (req, res) => {
             role,
             organizerRequest: false // Clear the request flag
         });
+
+        // Send Notification
+        const isApproved = role === 'organizer';
+        const notifTitle = isApproved ? "Organizer Request Approved" : "Organizer Request Rejected";
+        const notifBody = isApproved
+            ? "Your request for Organizer access has been APPROVED. You can now access the Organizer Dashboard."
+            : "Your request for Organizer access has been REJECTED.";
+
+        await db.collection('notifications').add({
+            userId: uid,
+            title: notifTitle,
+            body: notifBody,
+            read: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            type: 'role_update',
+            entityId: uid
+        });
+
+        try {
+            await sendPushNotification(uid, notifTitle, notifBody);
+        } catch (err) {
+            console.error("Push notification logic failed", err);
+        }
 
         res.status(200).json({ message: 'User role updated successfully' });
     } catch (error) {

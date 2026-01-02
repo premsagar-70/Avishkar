@@ -153,6 +153,29 @@ const deleteEvent = async (req, res) => {
         if (doc.exists) {
             const eventData = doc.data();
 
+            // Send Notification to Creator (if not admin) if it was pending or approved
+            if (eventData.createdBy && eventData.createdBy !== 'admin') {
+                const notifTitle = "Event Deleted/Rejected";
+                const notifBody = `Your event "${eventData.title}" has been deleted (or rejected by admin).`;
+
+                await db.collection('notifications').add({
+                    userId: eventData.createdBy,
+                    title: notifTitle,
+                    body: notifBody,
+                    read: false,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    type: 'event_deletion',
+                    entityId: req.params.id
+                });
+
+                try {
+                    await sendPushNotification(eventData.createdBy, notifTitle, notifBody);
+                } catch (err) {
+                    console.error("Push notif error", err);
+                }
+            }
+
+
             // 1. Delete Image from GitHub
             if (eventData.imageUrl) {
                 await deleteFromGitHub(eventData.imageUrl);
@@ -177,9 +200,41 @@ const deleteEvent = async (req, res) => {
     }
 };
 
+const { admin } = require('../config/firebase');
+const { sendPushNotification } = require('../services/notificationService');
+
 const approveEvent = async (req, res) => {
     try {
+        const eventDoc = await db.collection('events').doc(req.params.id).get();
+        if (!eventDoc.exists) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+        const event = eventDoc.data();
+
         await db.collection('events').doc(req.params.id).update({ status: 'approved' });
+
+        // Send Notification to Creator (if not admin)
+        if (event.createdBy && event.createdBy !== 'admin') {
+            const notifTitle = "Event Approved";
+            const notifBody = `Your event "${event.title}" has been APPROVED and is now visible to students.`;
+
+            await db.collection('notifications').add({
+                userId: event.createdBy,
+                title: notifTitle,
+                body: notifBody,
+                read: false,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                type: 'event_approval',
+                entityId: req.params.id
+            });
+
+            try {
+                await sendPushNotification(event.createdBy, notifTitle, notifBody);
+            } catch (err) {
+                console.error("Push notif error", err);
+            }
+        }
+
         res.status(200).json({ message: 'Event approved successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
