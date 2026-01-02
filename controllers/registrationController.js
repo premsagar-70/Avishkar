@@ -9,6 +9,14 @@ const registerForEvent = async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
+        // Fetch Event Data FIRST so it is available for checks and notifications
+        const eventDoc = await db.collection('events').doc(eventId).get();
+        if (!eventDoc.exists) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+        const eventData = eventDoc.data();
+
+
         // Check if already registered
         const registrationsRef = db.collection('registrations');
         const snapshot = await registrationsRef
@@ -21,20 +29,16 @@ const registerForEvent = async (req, res) => {
         }
 
         // Check for slots availability
-        const eventDoc = await db.collection('events').doc(eventId).get();
-        if (eventDoc.exists) {
-            const eventData = eventDoc.data();
-            if (eventData.slots) {
-                const currentRegistrations = await registrationsRef
-                    .where('eventId', '==', eventId)
-                    .get();
+        if (eventData.slots) {
+            const currentRegistrations = await registrationsRef
+                .where('eventId', '==', eventId)
+                .get();
 
-                // Filter out rejected registrations
-                const activeRegistrations = currentRegistrations.docs.filter(doc => doc.data().status !== 'rejected').length;
+            // Filter out rejected registrations
+            const activeRegistrations = currentRegistrations.docs.filter(doc => doc.data().status !== 'rejected').length;
 
-                if (activeRegistrations >= eventData.slots) {
-                    return res.status(400).json({ message: 'Registration Full. Please contact the organizer for more seats.' });
-                }
+            if (activeRegistrations >= eventData.slots) {
+                return res.status(400).json({ message: 'Registration Full. Please contact the organizer for more seats.' });
             }
         }
 
