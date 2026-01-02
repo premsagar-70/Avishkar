@@ -1,5 +1,4 @@
-const admin = require('firebase-admin');
-const { db } = require('../config/firebase');
+const { admin, db } = require('../config/firebase');
 
 const sendPushNotification = async (userId, title, body, data = {}) => {
     try {
@@ -16,20 +15,25 @@ const sendPushNotification = async (userId, title, body, data = {}) => {
         const userData = userDoc.data();
         const fcmTokens = userData.fcmTokens || [];
 
-        if (fcmTokens.length === 0) return;
+        if (fcmTokens.length === 0) {
+            console.log(`[NotificationService] No tokens found for user ${userId}`);
+            return;
+        }
 
         // 2. Prepare message
+        // Firebase Admin v13+ "sendEachForMulticast" expects { tokens: [], notification: {}, data: {} }
         const message = {
             notification: {
                 title: title,
                 body: body,
             },
-            data: data, // Add data payload
+            data: data,
             tokens: fcmTokens,
         };
 
         // 3. Send Multicast Message
-        const response = await admin.messaging().sendMulticast(message);
+        console.log(`[NotificationService] Sending push to ${fcmTokens.length} tokens...`);
+        const response = await admin.messaging().sendEachForMulticast(message);
         console.log(`[NotificationService] Send response: Success=${response.successCount}, Failure=${response.failureCount}`);
 
         // 4. Cleanup invalid tokens
@@ -37,8 +41,12 @@ const sendPushNotification = async (userId, title, body, data = {}) => {
             const failedTokens = [];
             response.responses.forEach((resp, idx) => {
                 if (!resp.success) {
-                    console.error(`[NotificationService] Token failed: ${fcmTokens[idx]}`, resp.error);
-                    failedTokens.push(fcmTokens[idx]);
+                    // Check for invalid-registration-token error code
+                    const code = resp.error?.code;
+                    console.error(`[NotificationService] Token failed: ${fcmTokens[idx]}`, code, resp.error);
+                    if (code === 'messaging/invalid-registration-token' || code === 'messaging/registration-token-not-registered') {
+                        failedTokens.push(fcmTokens[idx]);
+                    }
                 }
             });
 
@@ -49,8 +57,6 @@ const sendPushNotification = async (userId, title, body, data = {}) => {
                 console.log(`Cleaned up ${failedTokens.length} invalid FCM tokens for user ${userId}`);
             }
         }
-
-        console.log(`Sent push notification to user ${userId}: ${title}`);
     } catch (error) {
         console.error("Error sending push notification:", error);
     }
