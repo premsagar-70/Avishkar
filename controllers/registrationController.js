@@ -71,8 +71,14 @@ const registerForEvent = async (req, res) => {
             timestamp: new Date()
         });
 
-        // --- Send Notification to Organizer ---
+        // --- Send Notification to Organizer AND Admin ---
         try {
+            const { sendPushNotification } = require('../services/notificationService');
+            const notifTitle = "New Registration";
+            const notifBody = `${name} registered for ${eventData.title}.`;
+            const url = `/organizer/participants/${eventId}`;
+
+            // 1. Determine Organizer
             let targetOrganizerId = null;
             if (eventData.enableMultiDepartment && department && eventData.departmentOrganizers && eventData.departmentOrganizers[department]) {
                 targetOrganizerId = eventData.departmentOrganizers[department];
@@ -80,11 +86,8 @@ const registerForEvent = async (req, res) => {
                 targetOrganizerId = eventData.assignedTo || eventData.createdBy;
             }
 
-            if (targetOrganizerId && targetOrganizerId !== 'admin') {
-                const { sendPushNotification } = require('../services/notificationService');
-                const notifTitle = "New Registration";
-                const notifBody = `${name} registered for ${eventData.title}.`;
-
+            // Notify Organizer (if found)
+            if (targetOrganizerId) {
                 // Add to Firestore
                 await db.collection('notifications').add({
                     userId: targetOrganizerId,
@@ -95,18 +98,48 @@ const registerForEvent = async (req, res) => {
                     type: 'new_registration',
                     entityId: newRegRef.id,
                     eventId: eventId,
-                    url: `/organizer/participants/${eventId}` // Helper for frontend
+                    url: url
                 });
 
                 // Send Push
-                const url = `/organizer/participants/${eventId}`;
                 await sendPushNotification(targetOrganizerId, notifTitle, notifBody, {
                     url: url,
                     eventId: eventId
                 });
             }
+
+            // 2. Notify ALL Admins
+            const adminSnapshot = await db.collection('users').where('role', '==', 'admin').get();
+            if (!adminSnapshot.empty) {
+                const adminPromises = adminSnapshot.docs.map(async (doc) => {
+                    const adminId = doc.id;
+                    // Avoid duplicate notification if admin is same as organizer
+                    if (adminId === targetOrganizerId) return;
+
+                    // Add to Firestore
+                    await db.collection('notifications').add({
+                        userId: adminId,
+                        title: notifTitle,
+                        body: notifBody,
+                        read: false,
+                        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                        type: 'new_registration',
+                        entityId: newRegRef.id,
+                        eventId: eventId,
+                        url: url
+                    });
+
+                    // Send Push
+                    await sendPushNotification(adminId, notifTitle, notifBody, {
+                        url: url,
+                        eventId: eventId
+                    });
+                });
+                await Promise.all(adminPromises);
+            }
+
         } catch (notifError) {
-            console.error("Failed to send organizer notification:", notifError);
+            console.error("Failed to send organizer/admin notification:", notifError);
             // Don't fail the registration if notification fails
         }
 

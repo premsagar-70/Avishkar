@@ -129,4 +129,46 @@ const deleteUser = async (req, res) => {
     }
 };
 
-module.exports = { getAllUsers, updateUserRole, getUserById, deleteUser };
+const notifyNewUser = async (req, res) => {
+    const { userId, name, email } = req.body;
+
+    try {
+        const notifTitle = "New Account Registered";
+        const notifBody = `New user ${name} (${email}) has joined Avishkar.`;
+        const url = `/admin/users`; // Redirect admin to user list
+
+        // Notify ALL Admins
+        const adminSnapshot = await db.collection('users').where('role', '==', 'admin').get();
+        if (!adminSnapshot.empty) {
+            const adminPromises = adminSnapshot.docs.map(async (doc) => {
+                const adminId = doc.id;
+
+                // Add to Firestore
+                await db.collection('notifications').add({
+                    userId: adminId,
+                    title: notifTitle,
+                    body: notifBody,
+                    read: false,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    type: 'new_user',
+                    entityId: userId,
+                    url: url
+                });
+
+                // Send Push
+                await sendPushNotification(adminId, notifTitle, notifBody, {
+                    url: url
+                });
+            });
+            await Promise.all(adminPromises);
+        }
+
+        res.status(200).json({ message: 'Admins notified' });
+    } catch (error) {
+        console.error('Error in notifyNewUser:', error);
+        // Don't block registration on notification failure
+        res.status(500).json({ error: 'Failed to notify admins' });
+    }
+};
+
+module.exports = { getAllUsers, updateUserRole, getUserById, deleteUser, notifyNewUser };
