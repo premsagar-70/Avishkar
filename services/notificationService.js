@@ -1,7 +1,7 @@
 const admin = require('firebase-admin');
 const { db } = require('../config/firebase');
 
-const sendPushNotification = async (userId, title, body) => {
+const sendPushNotification = async (userId, title, body, data = {}) => {
     try {
         if (!userId) return;
 
@@ -25,6 +25,7 @@ const sendPushNotification = async (userId, title, body) => {
                 title: title,
                 body: body,
             },
+            data: data, // Add data payload
             tokens: fcmTokens,
         };
 

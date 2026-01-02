@@ -90,11 +90,16 @@ const registerForEvent = async (req, res) => {
                     createdAt: admin.firestore.FieldValue.serverTimestamp(),
                     type: 'new_registration',
                     entityId: newRegRef.id,
-                    eventId: eventId
+                    eventId: eventId,
+                    url: `/organizer/participants/${eventId}` // Helper for frontend
                 });
 
                 // Send Push
-                await sendPushNotification(targetOrganizerId, notifTitle, notifBody);
+                const url = `/organizer/participants/${eventId}`;
+                await sendPushNotification(targetOrganizerId, notifTitle, notifBody, {
+                    url: url,
+                    eventId: eventId
+                });
             }
         } catch (notifError) {
             console.error("Failed to send organizer notification:", notifError);
@@ -222,13 +227,22 @@ const updateRegistrationStatus = async (req, res) => {
             read: false,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             type: 'registration_status',
-            entityId: id // Registration ID
+            entityId: id, // Registration ID
+            eventId: registration.eventId,
+            url: `/events/${registration.eventId}`
         });
 
         // Send Push
         try {
             const { sendPushNotification } = require('../services/notificationService');
-            await sendPushNotification(registration.userId, notifTitle, notifBody);
+            // Assuming registration document has eventId. 
+            // If not, we might need to fetch it or rely on entityId = registrationId which frontend can resolve.
+            // But having a direct URL is better.
+            const url = `/events/${registration.eventId}`;
+            await sendPushNotification(registration.userId, notifTitle, notifBody, {
+                url: url,
+                eventId: registration.eventId
+            });
         } catch (err) {
             console.error("Push notification failed", err);
         }
