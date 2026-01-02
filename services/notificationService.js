@@ -20,14 +20,15 @@ const sendPushNotification = async (userId, title, body, data = {}) => {
             return;
         }
 
-        // 2. Prepare message
-        // Firebase Admin v13+ "sendEachForMulticast" expects { tokens: [], notification: {}, data: {} }
+        // 2. Prepare message (Data-only to prevent duplicate notifications)
         const message = {
-            notification: {
-                title: title,
-                body: body,
+            data: {
+                title: String(title),
+                body: String(body),
+                url: data.url ? String(data.url) : '/',
+                eventId: data.eventId ? String(data.eventId) : '',
+                ...data // spread other data if any
             },
-            data: data,
             tokens: fcmTokens,
         };
 
