@@ -5,12 +5,17 @@ const sendPushNotification = async (userId, title, body) => {
     try {
         if (!userId) return;
 
+        console.log(`[NotificationService] Fetching tokens for user: ${userId}`);
         // 1. Fetch user's FCM tokens
         const userDoc = await db.collection('users').doc(userId).get();
-        if (!userDoc.exists) return;
+        if (!userDoc.exists) {
+            console.log(`[NotificationService] User ${userId} not found.`);
+            return;
+        }
 
         const userData = userDoc.data();
         const fcmTokens = userData.fcmTokens || [];
+        console.log(`[NotificationService] Found ${fcmTokens.length} tokens for user ${userId}`);
 
         if (fcmTokens.length === 0) return;
 
@@ -25,12 +30,14 @@ const sendPushNotification = async (userId, title, body) => {
 
         // 3. Send Multicast Message
         const response = await admin.messaging().sendMulticast(message);
+        console.log(`[NotificationService] Send response: Success=${response.successCount}, Failure=${response.failureCount}`);
 
         // 4. Cleanup invalid tokens
         if (response.failureCount > 0) {
             const failedTokens = [];
             response.responses.forEach((resp, idx) => {
                 if (!resp.success) {
+                    console.error(`[NotificationService] Token failed: ${fcmTokens[idx]}`, resp.error);
                     failedTokens.push(fcmTokens[idx]);
                 }
             });
