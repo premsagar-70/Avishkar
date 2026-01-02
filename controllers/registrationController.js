@@ -52,20 +52,54 @@ const registerForEvent = async (req, res) => {
         }
 
         // Create registration
-        await registrationsRef.add({
+        const newRegRef = await registrationsRef.add({
             userId,
             eventId,
             mobile,
-            email, // Storing email for easy access by admins
-            name,  // Storing name for easy access
+            email,
+            name,
             college: college || '',
             rollNo: rollNo || '',
             department: department || '',
             teamMembers: req.body.teamMembers || [],
             paymentScreenshotUrl: finalPaymentScreenshotUrl,
-            status: status || 'pending', // pending, approved, rejected
+            status: status || 'pending',
             timestamp: new Date()
         });
+
+        // --- Send Notification to Organizer ---
+        try {
+            let targetOrganizerId = null;
+            if (eventData.enableMultiDepartment && department && eventData.departmentOrganizers && eventData.departmentOrganizers[department]) {
+                targetOrganizerId = eventData.departmentOrganizers[department];
+            } else {
+                targetOrganizerId = eventData.assignedTo || eventData.createdBy;
+            }
+
+            if (targetOrganizerId && targetOrganizerId !== 'admin') {
+                const { sendPushNotification } = require('../services/notificationService');
+                const notifTitle = "New Registration";
+                const notifBody = `${name} registered for ${eventData.title}.`;
+
+                // Add to Firestore
+                await db.collection('notifications').add({
+                    userId: targetOrganizerId,
+                    title: notifTitle,
+                    body: notifBody,
+                    read: false,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    type: 'new_registration',
+                    entityId: newRegRef.id,
+                    eventId: eventId
+                });
+
+                // Send Push
+                await sendPushNotification(targetOrganizerId, notifTitle, notifBody);
+            }
+        } catch (notifError) {
+            console.error("Failed to send organizer notification:", notifError);
+            // Don't fail the registration if notification fails
+        }
 
         res.status(201).json({ message: 'Registration successful' });
     } catch (error) {
