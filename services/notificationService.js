@@ -15,7 +15,6 @@ const sendPushNotification = async (userId, title, body, data = {}) => {
 
         const userData = userDoc.data();
         const fcmTokens = userData.fcmTokens || [];
-        console.log(`[NotificationService] Found ${fcmTokens.length} tokens for user ${userId}`);
 
         if (fcmTokens.length === 0) return;
 
