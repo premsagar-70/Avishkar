@@ -68,11 +68,20 @@ const getEvents = async (req, res) => {
                 const snapshot = await query.get();
                 let events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-                events = events.filter(event =>
-                    event.assignedTo === organizerId ||
-                    event.createdBy === organizerId ||
-                    (event.organizerIds && event.organizerIds.includes(organizerId))
-                );
+                events = events.filter(event => {
+                    const isAssigned = event.assignedTo === organizerId;
+                    const isInOrganizersList = event.organizerIds && event.organizerIds.includes(organizerId);
+                    const isDeptOrganizer = event.departmentOrganizers && Object.values(event.departmentOrganizers).includes(organizerId);
+
+                    if (isAssigned || isInOrganizersList || isDeptOrganizer) return true;
+
+                    // Only fallback to createdBy if NOT assigned to anyone else and NOT multi-dept
+                    if (event.createdBy === organizerId) {
+                        return !event.assignedTo && !event.enableMultiDepartment;
+                    }
+
+                    return false;
+                });
                 return res.status(200).json(events);
             } else {
                 // Return both approved and completed events so Archives/PreviousYear pages work
@@ -110,26 +119,75 @@ const getEventById = async (req, res) => {
 const updateEvent = async (req, res) => {
     try {
         const updates = { ...req.body };
-        console.log(`Updating event ${req.params.id}`, Object.keys(updates));
+        // console.log(`Updating event ${req.params.id}`, Object.keys(updates));
 
-        if (updates.assignedTo !== undefined) {
-            if (updates.assignedTo) {
-                const userDoc = await db.collection('users').doc(updates.assignedTo).get();
-                if (userDoc.exists) {
-                    const userData = userDoc.data();
-                    updates.organizerName = userData.name || updates.organizerName || '';
-                    updates.organizerEmail = userData.email || updates.organizerEmail || '';
-                    updates.organizerMobile = userData.mobileNumber || updates.organizerMobile || '';
+        // 1. Fetch current event state to determine mode switch
+        const eventRef = db.collection('events').doc(req.params.id);
+        const eventDoc = await eventRef.get();
+        if (!eventDoc.exists) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+        const currentEvent = eventDoc.data();
+
+        // Determine new state of enableMultiDepartment
+        let isMultiDept = currentEvent.enableMultiDepartment;
+        if (updates.enableMultiDepartment !== undefined) {
+            isMultiDept = updates.enableMultiDepartment;
+        }
+
+        if (isMultiDept) {
+            // --- SWITCHING TO / UPDATING MULTI-DEPT MODE ---
+            // Clear single organizer fields to prevent double listing
+            updates.assignedTo = null;
+            updates.organizerName = '';
+            updates.organizerEmail = '';
+            updates.organizerMobile = '';
+
+            // Ensure departmentOrganizers is updated from request if provided
+            if (updates.departmentOrganizers) {
+                // Just use the provided map
+            } else if (updates.enableMultiDepartment === true && !currentEvent.enableMultiDepartment) {
+                // If switching to multi-dept but no organizers provided, init empty
+                updates.departmentOrganizers = {};
+            }
+
+        } else {
+            // --- SWITCHING TO / UPDATING SINGLE-ORGANIZER MODE ---
+            // Clear multi-dept fields
+            updates.departmentOrganizers = {};
+
+            // Handle Single Organizer Assignment logic
+            if (updates.assignedTo !== undefined) {
+                if (updates.assignedTo) {
+                    const userDoc = await db.collection('users').doc(updates.assignedTo).get();
+                    if (userDoc.exists) {
+                        const userData = userDoc.data();
+                        updates.organizerName = userData.name || updates.organizerName || '';
+                        updates.organizerEmail = userData.email || updates.organizerEmail || '';
+                        updates.organizerMobile = userData.mobileNumber || updates.organizerMobile || '';
+                    } else {
+                        // User not found? Clear fields
+                        updates.organizerName = '';
+                        updates.organizerEmail = '';
+                        updates.organizerMobile = '';
+                    }
                 } else {
+                    // assignedTo explicitly set to null/empty
+                    updates.organizerName = '';
+                    updates.organizerEmail = '';
+                    updates.organizerMobile = '';
+                    updates.assignedTo = null;
+                }
+            } else if (updates.enableMultiDepartment === false && currentEvent.enableMultiDepartment) {
+                // If switching FROM multi-dept TO single but didn't provide a new assignedTo,
+                // we should probably clear the single organizer fields just in case, or leave them if they were somehow set?
+                // Safer to clear if not explicitly provided during a switch.
+                if (!updates.assignedTo) {
+                    updates.assignedTo = null;
                     updates.organizerName = '';
                     updates.organizerEmail = '';
                     updates.organizerMobile = '';
                 }
-            } else {
-                updates.organizerName = '';
-                updates.organizerEmail = '';
-                updates.organizerMobile = '';
-                updates.assignedTo = null;
             }
         }
 
@@ -137,7 +195,7 @@ const updateEvent = async (req, res) => {
             updates.slots = parseInt(updates.slots);
         }
 
-        await db.collection('events').doc(req.params.id).update(updates);
+        await eventRef.update(updates);
         res.status(200).json({ id: req.params.id, ...updates });
     } catch (error) {
         console.error("Update Event Error:", error);
