@@ -171,4 +171,17 @@ const notifyNewUser = async (req, res) => {
     }
 };
 
-module.exports = { getAllUsers, updateUserRole, getUserById, deleteUser, notifyNewUser };
+const cleanupNotifications = async (req, res) => {
+    const { uid } = req.params;
+    try {
+        const { cleanupReadNotifications } = require('../services/notificationService');
+        // Run in background (don't await strictly if we want fast response, but awaiting is safer for errors)
+        await cleanupReadNotifications(uid);
+        res.status(200).json({ message: 'Cleanup initiated' });
+    } catch (error) {
+        console.error("Cleanup error:", error);
+        res.status(500).json({ error: 'Cleanup failed' });
+    }
+};
+
+module.exports = { getAllUsers, updateUserRole, getUserById, deleteUser, notifyNewUser, cleanupNotifications };

@@ -1,19 +1,35 @@
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 
-const uploadToGitHub = async (base64Image, folder = 'events') => {
+const uploadToGitHub = async (base64Content, folder = 'events') => {
     try {
         const token = process.env.GITHUB_TOKEN;
         if (!token) {
             throw new Error('GitHub token is not configured');
         }
 
-        // Remove header if present (e.g., "data:image/jpeg;base64,")
-        const base64Content = base64Image.replace(/^data:image\/\w+;base64,/, "");
+        let extension = 'jpg'; // Default
+        let content = base64Content;
 
-        const fileName = `${uuidv4()}.jpg`; // Assuming jpg for simplicity, can be dynamic
+        // Detect Mime Type and Strip Header
+        if (base64Content.startsWith('data:')) {
+            const matches = base64Content.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
+            if (matches) {
+                const mimeType = matches[1];
+                content = matches[2];
+
+                // Simple extension map
+                if (mimeType === 'application/pdf') extension = 'pdf';
+                else if (mimeType === 'image/png') extension = 'png';
+                else if (mimeType === 'image/jpeg') extension = 'jpg';
+                else if (mimeType === 'application/msword') extension = 'doc';
+                else if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') extension = 'docx';
+            }
+        }
+
+        const fileName = `${uuidv4()}.${extension}`;
         const path = `assets/${folder}/${fileName}`;
-        const message = `Upload image ${fileName}`;
+        const message = `Upload file ${fileName}`;
 
         // GitHub API requires owner and repo name. 
         // Ideally these should also be in env or passed in.
@@ -30,7 +46,7 @@ const uploadToGitHub = async (base64Image, folder = 'events') => {
 
         const response = await axios.put(url, {
             message: message,
-            content: base64Content
+            content: content
         }, {
             headers: {
                 'Authorization': `token ${token}`,
@@ -58,7 +74,7 @@ const uploadToGitHub = async (base64Image, folder = 'events') => {
                 headers: { ...error.config.headers, Authorization: 'HIDDEN' } // Hide token in logs
             } : 'No config'
         });
-        throw new Error(`Failed to upload image to GitHub: ${error.response?.data?.message || error.message}`);
+        throw new Error(`Failed to upload file to GitHub: ${error.response?.data?.message || error.message}`);
     }
 };
 

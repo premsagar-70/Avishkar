@@ -6,6 +6,7 @@ const { getAllUsers, updateUserRole, getUserById, deleteUser, notifyNewUser } = 
 router.get('/', getAllUsers);
 router.post('/notify-new-user', notifyNewUser);
 router.get('/:uid', getUserById);
+router.post('/:uid/notifications/cleanup', require('../controllers/userController').cleanupNotifications);
 router.put('/:uid/role', updateUserRole);
 router.delete('/:uid', deleteUser);
 
