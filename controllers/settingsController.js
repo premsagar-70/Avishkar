@@ -6,7 +6,7 @@ const getSettings = async (req, res) => {
         if (!doc.exists) {
             // Return defaults if not set
             return res.status(200).json({
-                registrationDeadline: new Date('2025-12-25').toISOString(),
+                registrationDeadline: new Date('2026-12-31').toISOString(),
                 departments: ['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT', 'AI&DS', 'MBA', 'MCA', 'Others']
             });
         }
