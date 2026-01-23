@@ -243,6 +243,8 @@ const getRegistrationById = async (req, res) => {
                 // Add fields for permission checking
                 data.eventAssignedTo = eventData.assignedTo;
                 data.eventCreatedBy = eventData.createdBy;
+                data.eventDepartmentOrganizers = eventData.departmentOrganizers;
+                data.eventEnableMultiDepartment = eventData.enableMultiDepartment;
             }
         }
 
