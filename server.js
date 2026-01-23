@@ -4,6 +4,15 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
+const cron = require('node-cron');
+const { deleteOldEvents } = require('./services/cleanupService');
+
+// Schedule Cleanup Job: Run every day at midnight (00:00)
+cron.schedule('0 0 * * *', () => {
+    console.log('[Cron] Triggering daily event cleanup...');
+    deleteOldEvents();
+});
+
 
 
 const app = express();

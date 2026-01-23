@@ -73,7 +73,20 @@ const importEvents = async (req, res) => {
     }
 };
 
+const { deleteOldEvents } = require('../services/cleanupService');
+
+const cleanupData = async (req, res) => {
+    try {
+        await deleteOldEvents();
+        res.status(200).json({ message: 'Cleanup process completed successfully.' });
+    } catch (error) {
+        console.error('Error running cleanup:', error);
+        res.status(500).json({ error: 'Failed to run cleanup process.' });
+    }
+};
+
 module.exports = {
     exportEvents,
-    importEvents
+    importEvents,
+    cleanupData
 };
