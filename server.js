@@ -31,6 +31,8 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/registrations', require('./routes/registrationRoutes'));
 app.use('/api/settings', require('./routes/settingsRoutes'));
 app.use('/api/admin/data', require('./routes/dataRoutes'));
+app.use('/api/contact', require('./routes/contactRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 app.get('/', (req, res) => {
     res.send('Avishkar API is running');
